@@ -114,12 +114,13 @@ class ModelHelper(AbstractModelHelper):
   def setup_lrn_rate(self, global_step):
     """Setup the learning rate (and number of training iterations)."""
 
-    nb_epochs = 250
+    nb_epochs = 100
     idxs_epoch = [100, 150, 200]
     decay_rates = [1.0, 0.1, 0.01, 0.001]
     batch_size = FLAGS.batch_size * (1 if not FLAGS.enbl_multi_gpu else mgw.size())
     lrn_rate = setup_lrn_rate_piecewise_constant(global_step, batch_size, idxs_epoch, decay_rates)
     nb_iters = int(FLAGS.nb_smpls_train * nb_epochs * FLAGS.nb_epochs_rat / batch_size)
+    print('BATCH SIZE: {}, NUM_ITERATION: {}'.format(batch_size, nb_iters))
 
     return lrn_rate, nb_iters
 

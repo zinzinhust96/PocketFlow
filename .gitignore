@@ -12,3 +12,6 @@ path.conf
 nvidia-smi-dump
 ssd_outputs
 dump
+
+# DATASET
+datasets/cifar-10-batches-bin
