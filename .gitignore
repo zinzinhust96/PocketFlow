@@ -12,6 +12,10 @@ path.conf
 nvidia-smi-dump
 ssd_outputs
 dump
+backbone_models
+
 
 # DATASET
 datasets/cifar-10-batches-bin
+datasets/imagenet_tfrecord
+archive
