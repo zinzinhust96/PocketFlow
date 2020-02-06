@@ -18,4 +18,6 @@ backbone_models
 # DATASET
 datasets/cifar-10-batches-bin
 datasets/imagenet_tfrecord
+datasets/icdar-15_tfrecord
+datasets/synthtext_tfrecord
 archive

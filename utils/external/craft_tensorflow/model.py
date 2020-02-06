@@ -42,12 +42,14 @@ def craft(inputs, is_training):
 
     with tf.variable_scope("encode"):
         VGG16 = nets.VGG16(inputs, is_training=is_training, stem=True)
-
+    print('>>>>>> debug')
+    [print(n.name) for n in tf.get_default_graph().as_graph_def().node]
+    print('>>>>>> debug')
     f = [
-        tf.get_default_graph().get_tensor_by_name("encode/vgg16/conv2/2/Relu:0"), 
-        tf.get_default_graph().get_tensor_by_name("encode/vgg16/conv3/3/Relu:0"), 
-        tf.get_default_graph().get_tensor_by_name("encode/vgg16/conv4/3/Relu:0"), 
-        tf.get_default_graph().get_tensor_by_name("encode/vgg16/conv5/3/Relu:0"), 
+        tf.get_default_graph().get_tensor_by_name("model/encode/vgg16/conv2/2/Relu:0"), 
+        tf.get_default_graph().get_tensor_by_name("model/encode/vgg16/conv3/3/Relu:0"), 
+        tf.get_default_graph().get_tensor_by_name("model/encode/vgg16/conv4/3/Relu:0"), 
+        tf.get_default_graph().get_tensor_by_name("model/encode/vgg16/conv5/3/Relu:0"), 
     ] # name end points
 
     net = f[3]

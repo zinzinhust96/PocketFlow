@@ -1,6 +1,6 @@
 import cv2
 import numpy as np
-import base_models.craft.config as CONFIG
+import utils.external.craft_tensorflow.config as CONFIG
 import math
 from shapely.geometry import Polygon
 import matplotlib.pyplot as plt # for debug
