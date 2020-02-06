@@ -10,7 +10,7 @@ tf.app.flags.DEFINE_integer('epoch', 20, ' ')
 # tf.app.flags.DEFINE_integer('batch_size', 20, ' ')
 tf.app.flags.DEFINE_float('learning_rate', 0.001, ' ')
 tf.app.flags.DEFINE_float('decay_factor_lr', 0.0125/4000, ' ')
-
+tf.app.flags.DEFINE_float('momentum', 0.9, 'momentum coefficient')
 
 def forward_fn(inputs, is_train, data_format):
     """Forward pass function.
@@ -71,15 +71,17 @@ class ModelHelper(AbstractModelHelper):
         * metrics: dict (metrics that calculated (accuracy,...))
         """
         
-        conf_map = labels['conf_map']
-        y = labels['y']
-        loss = MSE_OHEM_Loss(outputs, y, conf_map)
-        metrics = {'fscore': calculate_fscore(outputs, y)}
+        # conf_map = labels['conf_map']
+        # y = labels['y']
+        # loss = MSE_OHEM_Loss(outputs, y, conf_map)
+        loss = tf.constant(0.5)
+        # metrics = {'fscore': calculate_fscore(outputs, y)}
+        metrics = {'acc' : 0.9}
         return loss, metrics
 
     def setup_lrn_rate(self, global_step):
         """Setup the learning rate (and number of training iterations)."""
-        lr = FLAGS.learning_rate * 1.0 / (1.0 + FLAGS.decay_factor_lr*global_step)
+        lr = FLAGS.learning_rate * 1.0 / (1.0 + FLAGS.decay_factor_lr*tf.cast(global_step, tf.float32))
         nb_iter = FLAGS.nb_smpls_train*FLAGS.epoch//FLAGS.batch_size
         return lr, nb_iter
 

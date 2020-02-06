@@ -40,8 +40,8 @@ def parse_example_proto(example_serialized):
         "image/object/y_bottom_left": tf.VarLenFeature(dtype=tf.float32),
         "image/height": tf.FixedLenFeature([], dtype=tf.int64, default_value=0),
         "image/width": tf.FixedLenFeature([], dtype=tf.int64, default_value=0),
-        "image/channels": tf.FixedLenFeature([], dtype=tf.int64, default_value=3)
-        # "image/object/texts": tf.VarLenFeature([], dtype=tf.string)
+        "image/channels": tf.FixedLenFeature([], dtype=tf.int64, default_value=3),
+        "image/object/texts": tf.VarLenFeature(dtype=tf.string)
     }
 
     features = tf.parse_single_example(example_serialized, feature_map)
@@ -57,7 +57,7 @@ def parse_example_proto(example_serialized):
     y_bottom_right = tf.expand_dims(features['image/object/y_bottom_right'].values, 0)
     x_bottom_left = tf.expand_dims(features['image/object/x_bottom_left'].values, 0)
     y_bottom_left = tf.expand_dims(features['image/object/y_bottom_left'].values, 0)
-    # word_texts =  tf.expand_dims(features['image/object/texts'].values, 0)
+    word_texts =  tf.expand_dims(features['image/object/texts'].values, 0)
 
     word_coords = tf.reshape(tf.stack([tf.squeeze(x_top_left), tf.squeeze(y_top_left), 
                tf.squeeze(x_top_right), tf.squeeze(y_top_right),
@@ -71,7 +71,7 @@ def parse_example_proto(example_serialized):
     # word_coords = tf.concat([tl, tr, br, bl], axis=1)
     tf.print(word_coords, output_stream=sys.stdout)
 
-    return features['image/encoded'], word_coords, shape
+    return features['image/encoded'], word_coords, word_texts, shape
 
 
 
@@ -87,7 +87,7 @@ def parse_fn(example_serialized, is_train):
     * word_coords: 
     """
 
-    image_buffer, word_coords, shape = parse_example_proto(example_serialized)
+    image_buffer, word_coords, word_texts, shape = parse_example_proto(example_serialized)
 
     ######## decode and resize ########
 
@@ -100,6 +100,8 @@ def parse_fn(example_serialized, is_train):
     
     #return image and label used in learner to calculate loss
     # return image [None, 768, 768, 3], label [None, 768, 768, 2] + confident_map
+    label = {'data': image, 'word_coords': word_coords, 'word_texts': word_texts}
+    # tf.print(word_texts)
     return image, word_coords
 
 
