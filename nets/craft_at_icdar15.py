@@ -4,6 +4,7 @@ from utils.external.craft_tensorflow.model import craft as CRAFT
 from utils.external.craft_tensorflow.loss import MSE_OHEM_Loss
 from utils.external.craft_tensorflow.utils import decay_learning_rate, calculate_fscore
 from datasets.icdar15_dataset import ICDAR15Dataset
+from utils.external.craft_tensorflow.icdar15_preprocessing import create_weakly_batch, normalize_mean_variance
 
 FLAGS = tf.app.flags.FLAGS
 tf.app.flags.DEFINE_integer('epoch', 20, ' ')
@@ -12,7 +13,7 @@ tf.app.flags.DEFINE_float('learning_rate', 0.001, ' ')
 tf.app.flags.DEFINE_float('decay_factor_lr', 0.0125/4000, ' ')
 tf.app.flags.DEFINE_float('momentum', 0.9, 'momentum coefficient')
 
-def forward_fn(inputs, is_train, data_format):
+def forward_fn(inputs, labels, is_train, data_format):
     """Forward pass function.
 
     Args:
@@ -23,6 +24,30 @@ def forward_fn(inputs, is_train, data_format):
     Returns:
     * outputs from the network's forward pass
     """
+    word_coords = labels['word_coords']
+    word_texts = labels['word_texts']
+    images, weight_characters, weight_affinitys, confident_maps = tf.py_function(create_weakly_batch, 
+                                                                [inputs, word_coords, word_texts], 
+                                                                (tf.float32, tf.float32, tf.float32, tf.float32))
+    images.set_shape(inputs.get_shape())
+    VGG16, y_pred = CRAFT(images, is_train)
+    outputs = {'y_pred': y_pred, 'weight_characters': weight_characters, 
+                'weight_affinitys': weight_affinitys, 'confident_maps' : confident_maps}
+
+    return outputs
+
+def forward_eval(inputs, is_train, data_format):
+    """Forward pass function.
+
+    Args:
+    * inputs: inputs to the network's forward pass
+    * is_train: whether to use the forward pass with training operations inserted
+    * data_format: data format ('channels_last' OR 'channels_first')
+
+    Returns:
+    * outputs from the network's forward pass
+    """
+
     VGG16, y_pred = CRAFT(inputs, is_train)
     return y_pred
 
@@ -33,7 +58,7 @@ class ModelHelper(AbstractModelHelper):
         """Constructor function."""
 
         # class-independent initialization
-        super(ModelHelper, self).__init__(data_format)
+        super(ModelHelper, self).__init__(data_format, forward_w_labels=True)
 
         # initialize training & evaluation subsets
         self.dataset_train = ICDAR15Dataset(is_train=True)
@@ -49,15 +74,15 @@ class ModelHelper(AbstractModelHelper):
 
         return self.dataset_eval.build()
 
-    def forward_train(self, inputs):
+    def forward_train(self, inputs, labels):
         """Forward computation at training."""
 
-        return forward_fn(inputs, is_train=True, data_format=self.data_format)
+        return forward_fn(inputs, labels, is_train=True, data_format=self.data_format)
 
-    def forward_eval(self, inputs):
+    def forward_eval(self, inputs, labels):
         """Forward computation at evaluation."""
 
-        return forward_fn(inputs, is_train=False, data_format=self.data_format)
+        return forward_fn(inputs, labels, is_train=False, data_format=self.data_format)
 
     def calc_loss(self, labels, outputs, trainable_vars):
         """Calculate loss (and some extra evaluation metrics).
@@ -70,12 +95,14 @@ class ModelHelper(AbstractModelHelper):
         * loss: loss calculated
         * metrics: dict (metrics that calculated (accuracy,...))
         """
-        
-        # conf_map = labels['conf_map']
-        # y = labels['y']
-        # loss = MSE_OHEM_Loss(outputs, y, conf_map)
-        loss = tf.constant(0.5)
-        # metrics = {'fscore': calculate_fscore(outputs, y)}
+        y_pred = outputs['y_pred']
+        weight_characters = outputs['weight_characters']
+        weight_affinitys = outputs['weight_affinitys']
+        confident_maps = outputs['confident_maps']
+        y = tf.stack([weight_characters, weight_affinitys], axis=-1)
+        print(y)
+        loss = MSE_OHEM_Loss(y_pred, y, confident_maps)
+        # metrics = {'fscore': calculate_fscore(y_pred, y)}
         metrics = {'acc' : 0.9}
         return loss, metrics
 

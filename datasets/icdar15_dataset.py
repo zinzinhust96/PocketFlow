@@ -7,10 +7,10 @@ from utils.external.craft_tensorflow.icdar15_preprocessing import preprocess_ima
 
 FLAGS = tf.app.flags.FLAGS
 
-tf.app.flags.DEFINE_integer("nb_smpls_train", 1281167, "# of samples for training")
-tf.app.flags.DEFINE_integer("nb_smpls_val", 10000, "# of samples for validation")
-tf.app.flags.DEFINE_integer("nb_smpls_eval", 50000, "# of samples for evaluation")
-tf.app.flags.DEFINE_integer("batch_size", 64, "batch size per GPU for training")
+tf.app.flags.DEFINE_integer("nb_smpls_train", 1000, "# of samples for training")
+tf.app.flags.DEFINE_integer("nb_smpls_val", 1000, "# of samples for validation")
+tf.app.flags.DEFINE_integer("nb_smpls_eval", 1000, "# of samples for evaluation")
+tf.app.flags.DEFINE_integer("batch_size", 1, "batch size per GPU for training")
 tf.app.flags.DEFINE_integer("batch_size_eval", 1, "batch size for evaluation")
 
 # ILSVRC-12 specifications
@@ -63,13 +63,15 @@ def parse_example_proto(example_serialized):
                tf.squeeze(x_top_right), tf.squeeze(y_top_right),
                tf.squeeze(x_bottom_right), tf.squeeze(y_bottom_right),
                tf.squeeze(x_bottom_left), tf.squeeze(y_bottom_left)
-              ], axis=1), (-1, 4, 2))
+              ], axis=-1), (-1, 4, 2))
+
     # tl = tf.stack([tf.squeeze(x_top_left), tf.squeeze(y_top_left)], axis=1)
     # tr = tf.stack([tf.squeeze(x_top_right), tf.squeeze(y_top_right)], axis=1)
     # br = tf.stack([tf.squeeze(x_bottom_right), tf.squeeze(y_bottom_right)], axis=1)
     # bl = tf.stack([tf.squeeze(x_bottom_left), tf.squeeze(y_bottom_left)], axis=1)
     # word_coords = tf.concat([tl, tr, br, bl], axis=1)
-    tf.print(word_coords, output_stream=sys.stdout)
+    # print('!@#$', word_texts)
+    # tf.print('!@#$', word_texts, output_stream=sys.stdout)
 
     return features['image/encoded'], word_coords, word_texts, shape
 
@@ -90,9 +92,6 @@ def parse_fn(example_serialized, is_train):
     image_buffer, word_coords, word_texts, shape = parse_example_proto(example_serialized)
 
     ######## decode and resize ########
-
-
-    ######## decode and resize ########
     image = preprocess_image(image_buffer=image_buffer, output_side=IMAGE_SIDE, num_channels=IMAGE_CHN, is_training=is_train)
     ######## decode and resize ########
     word_coords = preprocess_label(input_shape = shape, character = tf.transpose(word_coords), side = IMAGE_SIDE)
@@ -100,9 +99,9 @@ def parse_fn(example_serialized, is_train):
     
     #return image and label used in learner to calculate loss
     # return image [None, 768, 768, 3], label [None, 768, 768, 2] + confident_map
-    label = {'data': image, 'word_coords': word_coords, 'word_texts': word_texts}
+    label = {'word_coords': word_coords, 'word_texts': word_texts}
     # tf.print(word_texts)
-    return image, word_coords
+    return image, label
 
 
 class ICDAR15Dataset(AbstractDataset):

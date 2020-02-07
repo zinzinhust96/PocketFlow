@@ -119,6 +119,7 @@ class FullPrecLearner(AbstractLearner):  # pylint: disable=too-many-instance-att
       with tf.variable_scope(self.data_scope):
         iterator = self.build_dataset_train() if is_train else self.build_dataset_eval()
         images, labels = iterator.get_next()
+        tf.print(images)
         if not isinstance(images, dict):
           tf.add_to_collection('images_final', images)
         else:
@@ -134,7 +135,7 @@ class FullPrecLearner(AbstractLearner):  # pylint: disable=too-many-instance-att
         if is_train and self.forward_w_labels:
           logits = self.forward_train(images, labels)
         else:
-          logits = self.forward_train(images) if is_train else self.forward_eval(images)
+          logits = self.forward_train(images) if is_train else self.forward_eval(images, labels)
         if not isinstance(logits, dict):
           tf.add_to_collection('logits_final', logits)
         else:

@@ -5,9 +5,9 @@ from skimage.morphology import watershed
 from skimage.feature import peak_local_max
 from math import fabs
 import random
-from utils.data_manipulation import generate_target, generate_affinity
-from utils.utils import transform_word_img_revert
-import config as CONFIG
+from utils.external.craft_tensorflow.data_manipulation import generate_target, generate_affinity
+from utils.external.craft_tensorflow.utils import transform_word_img_revert
+import utils.external.craft_tensorflow.config as CONFIG
 
 
 def watershed_segmen(heat_box, min_distance):

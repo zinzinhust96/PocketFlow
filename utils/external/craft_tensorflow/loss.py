@@ -1,6 +1,6 @@
 import tensorflow as tf 
 import numpy as np
-
+import utils.external.craft_tensorflow.config as CONFIG
 
 FLAGS = tf.app.flags.FLAGS
 
