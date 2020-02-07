@@ -61,6 +61,7 @@ def convert_to_example(
     x_bottom_left = []
     y_bottom_left = []
     word_texts = [word.encode('utf8') for word in word_texts]
+    char_bbs = char_bbs.reshape(-1, 8)
     for ind in range(char_bbs.shape[0]):
         obj = char_bbs[ind].flatten()
         obj = [int(number) for number in obj]
@@ -68,6 +69,10 @@ def convert_to_example(
                                               x_top_right, y_top_right,
                                               x_bottom_right, y_bottom_right,
                                               x_bottom_left, y_bottom_left], obj)]
+    # print(obj)
+    # print(x_top_left, y_top_left, x_top_right, y_top_right,
+                                            #   x_bottom_right, y_bottom_right,
+                                            #   x_bottom_left, y_bottom_left)
     image_format = "JPG"
     example = tf.train.Example(
         features=tf.train.Features(
@@ -148,9 +153,7 @@ if __name__ == "__main__":
             imgs = [image.copy(), weight_character.copy(), weight_affinity.copy()]
         imgs[0] = normalize_mean_variance(imgs[0][:,:,::-1])
         image_data = [encode_jpeg(img) for img in imgs]
-                
         example = convert_to_example(img_path, filename, image_data, char_bbs, word_texts,
                                 height, width, channels)
-
         writer.write(example.SerializeToString())
     writer.close()
