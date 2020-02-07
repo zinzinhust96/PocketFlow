@@ -7,10 +7,10 @@ from utils.external.craft_tensorflow.icdar15_preprocessing import preprocess_ima
 
 FLAGS = tf.app.flags.FLAGS
 
-tf.app.flags.DEFINE_integer("nb_smpls_train", 1281167, "# of samples for training")
-tf.app.flags.DEFINE_integer("nb_smpls_val", 10000, "# of samples for validation")
-tf.app.flags.DEFINE_integer("nb_smpls_eval", 50000, "# of samples for evaluation")
-tf.app.flags.DEFINE_integer("batch_size", 64, "batch size per GPU for training")
+tf.app.flags.DEFINE_integer("nb_smpls_train", 99, "# of samples for training")
+tf.app.flags.DEFINE_integer("nb_smpls_val", 45, "# of samples for validation")
+tf.app.flags.DEFINE_integer("nb_smpls_eval", 45, "# of samples for evaluation")
+tf.app.flags.DEFINE_integer("batch_size", 4, "batch size per GPU for training")
 tf.app.flags.DEFINE_integer("batch_size_eval", 1, "batch size for evaluation")
 
 # ILSVRC-12 specifications
@@ -29,7 +29,9 @@ def parse_example_proto(example_serialized):
     * bbox: bounding box tensor
     """
     feature_map = {
-        "image/encoded": tf.FixedLenFeature([], dtype=tf.string, default_value=""),
+        "image/image/encoded": tf.FixedLenFeature([], dtype=tf.string, default_value=""),
+        "image/weight_character/encoded": tf.FixedLenFeature([], dtype=tf.string, default_value=""),
+        "image/weight_affinity/encoded": tf.FixedLenFeature([], dtype=tf.string, default_value=""),
         "image/object/x_top_left": tf.VarLenFeature(dtype=tf.float32),
         "image/object/y_top_left": tf.VarLenFeature(dtype=tf.float32),
         "image/object/x_top_right": tf.VarLenFeature(dtype=tf.float32),
@@ -41,39 +43,42 @@ def parse_example_proto(example_serialized):
         "image/height": tf.FixedLenFeature([], dtype=tf.int64, default_value=0),
         "image/width": tf.FixedLenFeature([], dtype=tf.int64, default_value=0),
         "image/channels": tf.FixedLenFeature([], dtype=tf.int64, default_value=3),
-        "image/object/words": tf.VarLenFeature(dtype=tf.string)
+        "image/object/texts": tf.VarLenFeature(dtype=tf.string)
     }
 
     features = tf.parse_single_example(example_serialized, feature_map)
     height = tf.cast(features['image/height'], dtype=tf.int32)
     width = tf.cast(features['image/width'], dtype=tf.int32)
-    channel = tf.cast(features['image/channels'], dtype=tf.int32)
-    shape = [width, height, channel]
-    x_top_left = tf.expand_dims(features['image/object/x_top_left'].values, 0)
-    y_top_left = tf.expand_dims(features['image/object/y_top_left'].values, 0)
-    x_top_right = tf.expand_dims(features['image/object/x_top_right'].values, 0)
-    y_top_right = tf.expand_dims(features['image/object/y_top_right'].values, 0)
-    x_bottom_right = tf.expand_dims(features['image/object/x_bottom_right'].values, 0)
-    y_bottom_right = tf.expand_dims(features['image/object/y_bottom_right'].values, 0)
-    x_bottom_left = tf.expand_dims(features['image/object/x_bottom_left'].values, 0)
-    y_bottom_left = tf.expand_dims(features['image/object/y_bottom_left'].values, 0)
-    word_texts =  tf.expand_dims(features['image/object/words'].values, 0)
+    # channel = tf.cast(features['image/channels'], dtype=tf.int32)
+    # shape = [width, height, channel]
+    # x_top_left = tf.expand_dims(features['image/object/x_top_left'].values, 0)
+    # y_top_left = tf.expand_dims(features['image/object/y_top_left'].values, 0)
+    # x_top_right = tf.expand_dims(features['image/object/x_top_right'].values, 0)
+    # y_top_right = tf.expand_dims(features['image/object/y_top_right'].values, 0)
+    # x_bottom_right = tf.expand_dims(features['image/object/x_bottom_right'].values, 0)
+    # y_bottom_right = tf.expand_dims(features['image/object/y_bottom_right'].values, 0)
+    # x_bottom_left = tf.expand_dims(features['image/object/x_bottom_left'].values, 0)
+    # y_bottom_left = tf.expand_dims(features['image/object/y_bottom_left'].values, 0)
+    # word_texts =  tf.expand_dims(features['image/object/texts'].values, 0)
 
-    character_coords = tf.reshape(tf.stack([tf.squeeze(x_top_left), tf.squeeze(y_top_left), 
-               tf.squeeze(x_top_right), tf.squeeze(y_top_right),
-               tf.squeeze(x_bottom_right), tf.squeeze(y_bottom_right),
-               tf.squeeze(x_bottom_left), tf.squeeze(y_bottom_left)
-              ], axis=1), (-1, 4, 2))
+    # word_coords = tf.reshape(tf.stack([tf.squeeze(x_top_left), tf.squeeze(y_top_left), 
+    #            tf.squeeze(x_top_right), tf.squeeze(y_top_right),
+    #            tf.squeeze(x_bottom_right), tf.squeeze(y_bottom_right),
+    #            tf.squeeze(x_bottom_left), tf.squeeze(y_bottom_left)
+    #           ], axis=-1), (-1, 4, 2))
     # tl = tf.stack([tf.squeeze(x_top_left), tf.squeeze(y_top_left)], axis=1)
     # tr = tf.stack([tf.squeeze(x_top_right), tf.squeeze(y_top_right)], axis=1)
     # br = tf.stack([tf.squeeze(x_bottom_right), tf.squeeze(y_bottom_right)], axis=1)
     # bl = tf.stack([tf.squeeze(x_bottom_left), tf.squeeze(y_bottom_left)], axis=1)
     # word_coords = tf.concat([tl, tr, br, bl], axis=1)
-    tf.print(character_coords, output_stream=sys.stdout)
+    # tf.print(word_coords, output_stream=sys.stdout)
+    # tf.print('!@#$', width, output_stream=sys.stdout)
+    # tf.print('!@#$', features['image/image/encoded'], output_stream=sys.stdout)
+    # tf.print('!@#$', features['image/weight_character/encoded'], output_stream=sys.stdout)
+    # tf.print('!@#$', features['image/weight_affinity/encoded'], output_stream=sys.stdout)
+    return features['image/image/encoded'], features['image/weight_character/encoded'], features['image/weight_affinity/encoded']
 
-    print(word_texts)
 
-    return features['image/encoded'], character_coords, word_texts, shape
 
 
 
@@ -89,22 +94,24 @@ def parse_fn(example_serialized, is_train):
     * word_coords: 
     """
 
-    image_buffer, word_coords, word_texts, shape = parse_example_proto(example_serialized)
-
+    image_buffer, weight_character_buffer, weight_affinity_buffer = parse_example_proto(example_serialized)
     ######## decode and resize ########
 
-
-    ######## decode and resize ########
-    image = preprocess_image(image_buffer=image_buffer, output_side=IMAGE_SIDE, num_channels=IMAGE_CHN, is_training=is_train)
-    ######## decode and resize ########
-    word_coords = preprocess_label(input_shape = shape, character = tf.transpose(word_coords), side = IMAGE_SIDE)
-
-    
+    image = tf.image.decode_jpeg(image_buffer, channels=3)
+    weight_character = tf.image.decode_jpeg(weight_character_buffer, channels=1)
+    weight_affinity = tf.image.decode_jpeg(weight_affinity_buffer, channels=1)
+    image = tf.cast(image, tf.float32)
+    image.set_shape([IMAGE_SIDE, IMAGE_SIDE, IMAGE_CHN])
+    print('!@#$', image)
+    weight_character = tf.cast(weight_character, tf.float32)
+    weight_affinity = tf.cast(weight_affinity, tf.float32)
+    weight_character.set_shape([IMAGE_SIDE, IMAGE_SIDE, 1])
+    weight_affinity.set_shape([IMAGE_SIDE, IMAGE_SIDE, 1])
     #return image and label used in learner to calculate loss
     # return image [None, 768, 768, 3], label [None, 768, 768, 2] + confident_map
-    label = {'data': image, 'word_coords': word_coords, 'word_texts': word_texts}
+    label = {'weight_characters': weight_character, 'weight_affinitys': weight_affinity}
     # tf.print(word_texts)
-    return image, word_coords
+    return image, label
 
 
 class SynthTextDataset(AbstractDataset):

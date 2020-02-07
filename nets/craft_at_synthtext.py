@@ -78,7 +78,7 @@ class ModelHelper(AbstractModelHelper):
         label = tf.stack((weight_characters, weight_affinitys), axis=-1)
         loss = MSE_OHEM_Loss(outputs, label, confident_maps)
         # metrics = {'fscore': calculate_fscore(outputs, y)}
-        metrics = {'acc' : 0.9}
+        metrics = {'acc' : tf.constant(0.9)}
         return loss, metrics
 
     def setup_lrn_rate(self, global_step):

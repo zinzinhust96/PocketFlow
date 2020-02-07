@@ -9,6 +9,7 @@ import six
 import base64
 from augment import rand_augment
 from data_manipulation import resize, generate_target, generate_affinity, normalize_mean_variance
+# os.environ["CUDA_VISIBLE_DEVICES"]="1"
 
 def _int64_feature(value):
     """Wrapper for inserting int64 features into Example proto."""
@@ -61,6 +62,7 @@ def convert_to_example(
     x_bottom_left = []
     y_bottom_left = []
     word_texts = [word.encode('utf8') for word in word_texts]
+    # print(char_bbs.reshape(-1, 4, 2)[:10])
     char_bbs = char_bbs.reshape(-1, 8)
     for ind in range(char_bbs.shape[0]):
         obj = char_bbs[ind].flatten()
@@ -70,9 +72,9 @@ def convert_to_example(
                                               x_bottom_right, y_bottom_right,
                                               x_bottom_left, y_bottom_left], obj)]
     # print(obj)
-    # print(x_top_left, y_top_left, x_top_right, y_top_right,
-                                            #   x_bottom_right, y_bottom_right,
-                                            #   x_bottom_left, y_bottom_left)
+    # print('{}, {}, {}, {}, {}, {}, {}, {}'.format(x_top_left, y_top_left, x_top_right, y_top_right,
+    #                                           x_bottom_right, y_bottom_right,
+    #                                           x_bottom_left, y_bottom_left))
     image_format = "JPG"
     example = tf.train.Example(
         features=tf.train.Features(
@@ -118,8 +120,8 @@ def encode_jpeg(data):
     return data_np
 
 if __name__ == "__main__":
-    SYNTH_IMG_PATH = '/hdd/UBD/background-images/data_generated/Pocketflow/val/synth'
-    OUTPUT_PATH = '/hdd/Minhbq/syntext_data/val.tfrecord'
+    SYNTH_IMG_PATH = '/hdd/UBD/background-images/data_generated/Pocketflow/train/synth'
+    OUTPUT_PATH = '/hdd/Minhbq/syntext_data/train.tfrecord'
     AUGUMENT = True
     writer = tf.python_io.TFRecordWriter(OUTPUT_PATH)
     mat = loadmat(os.path.join(SYNTH_IMG_PATH, 'bg.mat'))
@@ -152,8 +154,12 @@ if __name__ == "__main__":
         else:
             imgs = [image.copy(), weight_character.copy(), weight_affinity.copy()]
         imgs[0] = normalize_mean_variance(imgs[0][:,:,::-1])
-        image_data = [encode_jpeg(img) for img in imgs]
+        # print( imgs[0])
+        # print( imgs[1])
+        print( imgs[2])
+        image_data = [encode_jpeg(img.astype(np.float32)) for img in imgs]
         example = convert_to_example(img_path, filename, image_data, char_bbs, word_texts,
                                 height, width, channels)
+        # break
         writer.write(example.SerializeToString())
     writer.close()
