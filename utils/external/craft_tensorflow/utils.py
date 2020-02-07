@@ -31,7 +31,8 @@ def transform_word_img(img, corners):
     pts2 = np.float32(
         [[0, 0], [target_w, 0], [target_w, target_h], [0, target_h]])
     M = cv2.getPerspectiveTransform(pts1, pts2)
-    text_box = cv2.warpPerspective(img, M, (target_w, target_h))
+    # print(np.asarray(img))
+    text_box = cv2.warpPerspective(np.asarray(img), M, (target_w, target_h))
     # cv2.warpPerspective(img,M,output_size)
     return text_box, target_w, target_h
 

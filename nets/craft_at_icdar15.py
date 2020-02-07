@@ -4,7 +4,7 @@ from utils.external.craft_tensorflow.model import craft as CRAFT
 from utils.external.craft_tensorflow.loss import MSE_OHEM_Loss
 from utils.external.craft_tensorflow.utils import decay_learning_rate, calculate_fscore
 from datasets.icdar15_dataset import ICDAR15Dataset
-from utils.external.craft_tensorflow.icdar15_preprocessing import create_weakly_batch, normalize_mean_variance
+from utils.external.craft_tensorflow.icdar15_preprocessing import create_weakly_batch, gen_batch_image_contain_only_words, normalize_mean_variance, create_label
 
 FLAGS = tf.app.flags.FLAGS
 tf.app.flags.DEFINE_integer('epoch', 20, ' ')
@@ -26,8 +26,11 @@ def forward_fn(inputs, labels, is_train, data_format):
     """
     word_coords = labels['word_coords']
     word_texts = labels['word_texts']
-    images, weight_characters, weight_affinitys, confident_maps = tf.py_function(create_weakly_batch, 
-                                                                [inputs, word_coords, word_texts], 
+    weakly_batch, lookup_heatmaps = gen_batch_image_contain_only_words(inputs, word_coords)
+    # print(weakly_batch)
+    _, heatmaps = CRAFT(weakly_batch, False)
+    images, weight_characters, weight_affinitys, confident_maps = tf.py_function(create_label, 
+                                                                [inputs, weakly_batch, heatmaps, lookup_heatmaps], 
                                                                 (tf.float32, tf.float32, tf.float32, tf.float32))
     images.set_shape(inputs.get_shape())
     VGG16, y_pred = CRAFT(images, is_train)
