@@ -9,7 +9,7 @@ import six
 import base64
 from augment import rand_augment
 from data_manipulation import resize, generate_target, generate_affinity, normalize_mean_variance
-# os.environ["CUDA_VISIBLE_DEVICES"]="1"
+os.environ["CUDA_VISIBLE_DEVICES"]="1"
 
 def _int64_feature(value):
     """Wrapper for inserting int64 features into Example proto."""
@@ -38,6 +38,12 @@ def _bytes_feature(value):
     if isinstance(value, six.string_types):
         value = six.binary_type(value, encoding="utf-8")
     return tf.train.Feature(bytes_list=tf.train.BytesList(value=[value]))
+
+def scale(img, newrange=(0,255), eps = 1e-8):
+    min_ = np.min(img)
+    max_ = np.max(img)
+    img = (newrange[1] - newrange[0])*(img - min_)/(max_ - min_ + eps) + newrange[0]
+    return img
 
 def convert_to_example(
     filename, image_name, image_buffer, char_bbs, word_texts, height, width, channel):
@@ -94,9 +100,9 @@ def convert_to_example(
                 "image/object/words": _bytes_list_feature(word_texts),
                 "image/format": _bytes_feature(image_format),
                 "image/filename": _bytes_feature(image_name.encode("utf8")),
-                "image/image/encoded": _bytes_feature(image_buffer[0]),
-                "image/weight_character/encoded": _bytes_feature(image_buffer[1]),
-                "image/weight_affinity/encoded": _bytes_feature(image_buffer[2]),
+                "image/image/encoded": _float_feature(image_buffer[0]),
+                "image/weight_character/encoded": _float_feature(image_buffer[1]),
+                "image/weight_affinity/encoded": _float_feature(image_buffer[2]),
             }
         )
     )
@@ -107,7 +113,7 @@ def encode_jpeg(data):
     if len(data.shape) == 2:
         format = 'grayscale'
         data = data[..., None]
-    print(data.shape)
+    print(data)
     g = tf.Graph()
     with g.as_default():
         data_t = tf.placeholder(tf.uint8)
@@ -120,8 +126,8 @@ def encode_jpeg(data):
     return data_np
 
 if __name__ == "__main__":
-    SYNTH_IMG_PATH = '/hdd/UBD/background-images/data_generated/Pocketflow/train/synth'
-    OUTPUT_PATH = '/hdd/Minhbq/syntext_data/train.tfrecord'
+    SYNTH_IMG_PATH = '/hdd/UBD/background-images/data_generated/Pocketflow/val/synth'
+    OUTPUT_PATH = '/hdd/Minhbq/syntext_data/val.tfrecord'
     AUGUMENT = True
     writer = tf.python_io.TFRecordWriter(OUTPUT_PATH)
     mat = loadmat(os.path.join(SYNTH_IMG_PATH, 'bg.mat'))
@@ -154,12 +160,16 @@ if __name__ == "__main__":
         else:
             imgs = [image.copy(), weight_character.copy(), weight_affinity.copy()]
         imgs[0] = normalize_mean_variance(imgs[0][:,:,::-1])
-        # print( imgs[0])
-        # print( imgs[1])
-        print( imgs[2])
-        image_data = [encode_jpeg(img.astype(np.float32)) for img in imgs]
+        # print(np.unique(imgs[0]))
+        # print(np.unique(imgs[1]))
+        # print(np.max(imgs[2]))
+        image_data = [img.flatten().tolist() for img in imgs]
         example = convert_to_example(img_path, filename, image_data, char_bbs, word_texts,
                                 height, width, channels)
+        # print(image_data[0].shape)
+        # print(image_data[1].shape)
+        # print(image_data[2].shape)
+
         # break
         writer.write(example.SerializeToString())
     writer.close()
