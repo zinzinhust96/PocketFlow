@@ -29,9 +29,9 @@ def parse_example_proto(example_serialized):
     * bbox: bounding box tensor
     """
     feature_map = {
-        "image/image/encoded": tf.FixedLenFeature([], dtype=tf.string, default_value=""),
-        "image/weight_character/encoded": tf.FixedLenFeature([], dtype=tf.string, default_value=""),
-        "image/weight_affinity/encoded": tf.FixedLenFeature([], dtype=tf.string, default_value=""),
+        "image/image/encoded": tf.VarLenFeature(dtype=tf.float32),
+        "image/weight_character/encoded": tf.VarLenFeature( dtype=tf.float32),
+        "image/weight_affinity/encoded": tf.VarLenFeature( dtype=tf.float32),
         "image/object/x_top_left": tf.VarLenFeature(dtype=tf.float32),
         "image/object/y_top_left": tf.VarLenFeature(dtype=tf.float32),
         "image/object/x_top_right": tf.VarLenFeature(dtype=tf.float32),
@@ -47,8 +47,8 @@ def parse_example_proto(example_serialized):
     }
 
     features = tf.parse_single_example(example_serialized, feature_map)
-    height = tf.cast(features['image/height'], dtype=tf.int32)
-    width = tf.cast(features['image/width'], dtype=tf.int32)
+    # height = tf.cast(features['image/height'], dtype=tf.int32)
+    # width = tf.cast(features['image/width'], dtype=tf.int32)
     # channel = tf.cast(features['image/channels'], dtype=tf.int32)
     # shape = [width, height, channel]
     # x_top_left = tf.expand_dims(features['image/object/x_top_left'].values, 0)
@@ -76,7 +76,10 @@ def parse_example_proto(example_serialized):
     # tf.print('!@#$', features['image/image/encoded'], output_stream=sys.stdout)
     # tf.print('!@#$', features['image/weight_character/encoded'], output_stream=sys.stdout)
     # tf.print('!@#$', features['image/weight_affinity/encoded'], output_stream=sys.stdout)
-    return features['image/image/encoded'], features['image/weight_character/encoded'], features['image/weight_affinity/encoded']
+    image = tf.expand_dims(features['image/image/encoded'].values, 0)
+    weight_character = tf.expand_dims(features['image/weight_character/encoded'].values, 0)
+    weight_affinity = tf.expand_dims(features['image/weight_affinity/encoded'].values, 0)
+    return image, weight_character, weight_affinity
 
 
 
@@ -94,19 +97,29 @@ def parse_fn(example_serialized, is_train):
     * word_coords: 
     """
 
-    image_buffer, weight_character_buffer, weight_affinity_buffer = parse_example_proto(example_serialized)
+    image, weight_character, weight_affinity = parse_example_proto(example_serialized)
     ######## decode and resize ########
 
-    image = tf.image.decode_jpeg(image_buffer, channels=3)
-    weight_character = tf.image.decode_jpeg(weight_character_buffer, channels=1)
-    weight_affinity = tf.image.decode_jpeg(weight_affinity_buffer, channels=1)
-    image = tf.cast(image, tf.float32)
-    image.set_shape([IMAGE_SIDE, IMAGE_SIDE, IMAGE_CHN])
-    print('!@#$', image)
-    weight_character = tf.cast(weight_character, tf.float32)
-    weight_affinity = tf.cast(weight_affinity, tf.float32)
-    weight_character.set_shape([IMAGE_SIDE, IMAGE_SIDE, 1])
-    weight_affinity.set_shape([IMAGE_SIDE, IMAGE_SIDE, 1])
+    # image = tf.io.decode_raw(image_buffer, tf.float32)
+    # weight_character = tf.io.decode_raw(weight_character_buffer, tf.float32)
+    # weight_affinity = tf.io.decode_raw(weight_affinity_buffer, tf.float32)
+    print(image)
+    image = tf.reshape(image, [IMAGE_SIDE, IMAGE_SIDE, IMAGE_CHN])
+    # print(weight_character)
+    # print(weight_affinity)
+    weight_character = tf.reshape(weight_character, [IMAGE_SIDE, IMAGE_SIDE, 1])
+    weight_affinity = tf.reshape(weight_affinity, [IMAGE_SIDE, IMAGE_SIDE, 1])
+    # image = tf.cast(image, tf.float32)
+    # image.set_shape([IMAGE_SIDE, IMAGE_SIDE, IMAGE_CHN])
+    # print('!@#$', image)
+    # weight_character = tf.cast(weight_character, tf.float32)
+    # weight_affinity = tf.cast(weight_affinity, tf.float32)
+    # weight_character.set_shape([IMAGE_SIDE, IMAGE_SIDE, 1])
+    # weight_affinity.set_shape([IMAGE_SIDE, IMAGE_SIDE, 1])
+    # print(weight_affinity)
+    # tf.print(weight_affinity.get_shape(), output_stream=sys.stdout)
+    # tf.print(tf.math.reduce_max(weight_affinity), output_stream=sys.stdout)
+    # tf.print(tf.math.reduce_min(weight_affinity), output_stream=sys.stdout)
     #return image and label used in learner to calculate loss
     # return image [None, 768, 768, 3], label [None, 768, 768, 2] + confident_map
     label = {'weight_characters': weight_character, 'weight_affinitys': weight_affinity}
