@@ -7,6 +7,8 @@ from scipy.io import loadmat
 import config as CONFIG
 import six
 import base64
+from augment import rand_augment
+from data_manipulation import resize, generate_target, generate_affinity, normalize_mean_variance
 
 def _int64_feature(value):
     """Wrapper for inserting int64 features into Example proto."""
@@ -85,17 +87,24 @@ def convert_to_example(
                 "image/object/words": _bytes_list_feature(word_texts),
                 "image/format": _bytes_feature(image_format),
                 "image/filename": _bytes_feature(image_name.encode("utf8")),
-                "image/encoded": _bytes_feature(image_buffer),
+                "image/image/encoded": _bytes_feature(image_buffer[0]),
+                "image/weight_character/encoded": _bytes_feature(image_buffer[1]),
+                "image/weight_affinity/encoded": _bytes_feature(image_buffer[2]),
             }
         )
     )
     return example
 
 def encode_jpeg(data):
+    format = 'rgb'
+    if len(data.shape) == 2:
+        format = 'grayscale'
+        data = data[..., None]
+    print(data.shape)
     g = tf.Graph()
     with g.as_default():
         data_t = tf.placeholder(tf.uint8)
-        op = tf.image.encode_jpeg(data_t, format='rgb', quality=100)
+        op = tf.image.encode_jpeg(data_t, format=format, quality=100)
         init = tf.initialize_all_variables()
 
     with tf.Session(graph=g) as sess:
@@ -105,7 +114,8 @@ def encode_jpeg(data):
 
 if __name__ == "__main__":
     SYNTH_IMG_PATH = '/hdd/UBD/background-images/data_generated/Pocketflow/val/synth'
-    OUTPUT_PATH = '/hdd/namdng/tf_record_dataset/synthtext/val.tfrecord'
+    OUTPUT_PATH = '/hdd/Minhbq/syntext_data/val.tfrecord'
+    AUGUMENT = True
     writer = tf.python_io.TFRecordWriter(OUTPUT_PATH)
     mat = loadmat(os.path.join(SYNTH_IMG_PATH, 'bg.mat'))
     imnames = mat['imnames'][0] # ['file1.png', 'file2.png', ..., 'finen.png']
@@ -115,18 +125,32 @@ if __name__ == "__main__":
         filename = imname[0]
         print('{}/{}: Processing {}'.format(i, len(imnames), filename), end='\r')
         img_path = os.path.join(SYNTH_IMG_PATH, 'img', filename)
-        img = cv2.imread(img_path)[:,:,::-1]
-        height, width, channels = img.shape
-        image_data = encode_jpeg(img)
+        # Read RGB
+        image = cv2.imread(img_path)[:,:,::-1]
+        height, width, channels = image.shape
+        # Encode image into buffers
         # character bounding box
-        char_bbs = charBBs[i]
-        char_bbs = np.transpose(char_bbs, (2, 1, 0))
+        char_bbs = charBBs[i] #shape: (2, 4, ?)
         # character text
         txt = txts[i]
         word_texts = txt.copy()
-        print(word_texts)
+        # word_texts example: ['clusiaceae', '3HC', 'achimenes', '228X6', 'OBZG0', 'ANTIDOTES', 'MUTEST', 'カルラ']
+        word_texts = [word_text.strip() for word_text in word_texts]
+
+        # Get weight_character and weight_affinity
+        image, character = resize(image, char_bbs.copy())
+        chw_image = (image.copy()).transpose(2, 0, 1)
+        weight_character = generate_target(chw_image.shape, character.copy())
+        weight_affinity, affinity_bbox = generate_affinity(chw_image.shape, character.copy(), word_texts.copy())
+        if AUGUMENT:
+            imgs = rand_augment(list([image.copy(), weight_character.copy(), weight_affinity.copy()]))
+        else:
+            imgs = [image.copy(), weight_character.copy(), weight_affinity.copy()]
+        imgs[0] = normalize_mean_variance(imgs[0][:,:,::-1])
+        image_data = [encode_jpeg(img) for img in imgs]
+                
         example = convert_to_example(img_path, filename, image_data, char_bbs, word_texts,
                                 height, width, channels)
 
         writer.write(example.SerializeToString())
-writer.close()
+    writer.close()
