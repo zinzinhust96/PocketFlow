@@ -9,7 +9,13 @@ import six
 import base64
 from augment import rand_augment
 from data_manipulation import resize, generate_target, generate_affinity, normalize_mean_variance
+import multiprocessing
 os.environ["CUDA_VISIBLE_DEVICES"]="1"
+
+DATA_MODE = 'val'
+SYNTH_IMG_PATH = '/hdd/UBD/background-images/data_generated/Pocketflow/{}/synth'.format(DATA_MODE)
+NUMBER_OF_THREAD = 4
+AUGUMENT = True if DATA_MODE == 'train' else False
 
 def _int64_feature(value):
     """Wrapper for inserting int64 features into Example proto."""
@@ -46,7 +52,7 @@ def scale(img, newrange=(0,255), eps = 1e-8):
     return img
 
 def convert_to_example(
-    filename, image_name, image_buffer, char_bbs, word_texts, height, width, channel):
+    filename, image_name, image_buffer, char_bbs, word_texts, height, width, channels):
     """Build an Example proto for an example.
 
         Args:
@@ -71,7 +77,7 @@ def convert_to_example(
     char_bbs = char_bbs.reshape(-1, 8)
     for ind in range(char_bbs.shape[0]):
         obj = char_bbs[ind]
-        obj = [int(number) for number in obj]       # TODO: test later (int or float)
+        # obj = [int(number) for number in obj]
         [l.append(point) for l, point in zip([x_top_left, y_top_left,
                                               x_top_right, y_top_right,
                                               x_bottom_right, y_bottom_right,
@@ -124,18 +130,10 @@ def encode_jpeg(data):
         data_np = sess.run(op, feed_dict={ data_t: data })
     return data_np
 
-if __name__ == "__main__":
-    SYNTH_IMG_PATH = '/hdd/UBD/background-images/data_generated/Pocketflow/val/synth'
-    OUTPUT_PATH = '/hdd/Minhbq/syntext_data/val.tfrecord'
-    AUGUMENT = True
-    writer = tf.python_io.TFRecordWriter(OUTPUT_PATH)
-    mat = loadmat(os.path.join(SYNTH_IMG_PATH, 'bg.mat'))
-    imnames = mat['imnames'][0] # ['file1.png', 'file2.png', ..., 'finen.png']
-    charBBs = mat['charBB'][0]  # number of images, 2, 4, num_character
-    txts = mat['txt'][0]
+def process_and_write_tfrecord(current_process, imnames, charBBs, txts, writer):
     for i, imname in enumerate(imnames):
         filename = imname[0]
-        print('{}/{}: Processing {}'.format(i, len(imnames), filename), end='\r')
+        print('Process {} === {}/{}: Processing {} \n'.format(current_process, i, len(imnames), filename), end='\r')
         img_path = os.path.join(SYNTH_IMG_PATH, 'img', filename)
         # Read RGB
         image = cv2.imread(img_path)[:,:,::-1]     # change from BGR to RGB image
@@ -172,3 +170,27 @@ if __name__ == "__main__":
         # break
         writer.write(example.SerializeToString())
     writer.close()
+
+if __name__ == "__main__":
+    mat = loadmat(os.path.join(SYNTH_IMG_PATH, 'bg.mat'))
+    imnames = mat['imnames'][0] # ['file1.png', 'file2.png', ..., 'finen.png']
+    charBBs = mat['charBB'][0]  # number of images, 2, 4, num_character
+    txts = mat['txt'][0]
+
+    # multiprocessing
+    indexes = np.arange(len(imnames))
+    chunks = np.array_split(indexes, NUMBER_OF_THREAD)
+    processes = []
+    for index in range(NUMBER_OF_THREAD):
+        writer = tf.python_io.TFRecordWriter('/hdd/namdng/tf_record_dataset/craft/{}_{}.tfrecord'.format(DATA_MODE, index))
+        p = multiprocessing.Process(target=process_and_write_tfrecord, args=(index, imnames[chunks[index]], charBBs[chunks[index]], txts[chunks[index]], writer))
+        processes.append(p)
+
+    for p in processes:
+        p.start()
+
+    for p in processes:
+        p.join()
+    
+
+    
