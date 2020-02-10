@@ -51,40 +51,26 @@ def parse_example_proto(example_serialized):
     # width = tf.cast(features['image/width'], dtype=tf.int32)
     # channel = tf.cast(features['image/channels'], dtype=tf.int32)
     # shape = [width, height, channel]
-    # x_top_left = tf.expand_dims(features['image/object/x_top_left'].values, 0)
-    # y_top_left = tf.expand_dims(features['image/object/y_top_left'].values, 0)
-    # x_top_right = tf.expand_dims(features['image/object/x_top_right'].values, 0)
-    # y_top_right = tf.expand_dims(features['image/object/y_top_right'].values, 0)
-    # x_bottom_right = tf.expand_dims(features['image/object/x_bottom_right'].values, 0)
-    # y_bottom_right = tf.expand_dims(features['image/object/y_bottom_right'].values, 0)
-    # x_bottom_left = tf.expand_dims(features['image/object/x_bottom_left'].values, 0)
-    # y_bottom_left = tf.expand_dims(features['image/object/y_bottom_left'].values, 0)
+    x_top_left = tf.expand_dims(features['image/object/x_top_left'].values, 0)
+    y_top_left = tf.expand_dims(features['image/object/y_top_left'].values, 0)
+    x_top_right = tf.expand_dims(features['image/object/x_top_right'].values, 0)
+    y_top_right = tf.expand_dims(features['image/object/y_top_right'].values, 0)
+    x_bottom_right = tf.expand_dims(features['image/object/x_bottom_right'].values, 0)
+    y_bottom_right = tf.expand_dims(features['image/object/y_bottom_right'].values, 0)
+    x_bottom_left = tf.expand_dims(features['image/object/x_bottom_left'].values, 0)
+    y_bottom_left = tf.expand_dims(features['image/object/y_bottom_left'].values, 0)
     # word_texts =  tf.expand_dims(features['image/object/texts'].values, 0)
 
-    # word_coords = tf.reshape(tf.stack([tf.squeeze(x_top_left), tf.squeeze(y_top_left), 
-    #            tf.squeeze(x_top_right), tf.squeeze(y_top_right),
-    #            tf.squeeze(x_bottom_right), tf.squeeze(y_bottom_right),
-    #            tf.squeeze(x_bottom_left), tf.squeeze(y_bottom_left)
-    #           ], axis=-1), (-1, 4, 2))
-    # tl = tf.stack([tf.squeeze(x_top_left), tf.squeeze(y_top_left)], axis=1)
-    # tr = tf.stack([tf.squeeze(x_top_right), tf.squeeze(y_top_right)], axis=1)
-    # br = tf.stack([tf.squeeze(x_bottom_right), tf.squeeze(y_bottom_right)], axis=1)
-    # bl = tf.stack([tf.squeeze(x_bottom_left), tf.squeeze(y_bottom_left)], axis=1)
-    # word_coords = tf.concat([tl, tr, br, bl], axis=1)
-    # tf.print(word_coords, output_stream=sys.stdout)
-    # tf.print('!@#$', width, output_stream=sys.stdout)
-    # tf.print('!@#$', features['image/image/encoded'], output_stream=sys.stdout)
-    # tf.print('!@#$', features['image/weight_character/encoded'], output_stream=sys.stdout)
-    # tf.print('!@#$', features['image/weight_affinity/encoded'], output_stream=sys.stdout)
+    char_coords = tf.reshape(tf.stack([tf.squeeze(x_top_left), tf.squeeze(y_top_left), 
+               tf.squeeze(x_top_right), tf.squeeze(y_top_right),
+               tf.squeeze(x_bottom_right), tf.squeeze(y_bottom_right),
+               tf.squeeze(x_bottom_left), tf.squeeze(y_bottom_left)
+              ], axis=-1), (-1, 4, 2))
+
     image = tf.expand_dims(features['image/image/encoded'].values, 0)
     weight_character = tf.expand_dims(features['image/weight_character/encoded'].values, 0)
     weight_affinity = tf.expand_dims(features['image/weight_affinity/encoded'].values, 0)
-    return image, weight_character, weight_affinity
-
-
-
-
-
+    return image, weight_character, weight_affinity, char_coords
 
 def parse_fn(example_serialized, is_train):
     """Parse image & labels from the serialized data.
@@ -97,35 +83,17 @@ def parse_fn(example_serialized, is_train):
     * word_coords: 
     """
 
-    image, weight_character, weight_affinity = parse_example_proto(example_serialized)
+    image, weight_character, weight_affinity, char_coords = parse_example_proto(example_serialized)
     ######## decode and resize ########
-
-    # image = tf.io.decode_raw(image_buffer, tf.float32)
-    # weight_character = tf.io.decode_raw(weight_character_buffer, tf.float32)
-    # weight_affinity = tf.io.decode_raw(weight_affinity_buffer, tf.float32)
-    print(image)
     image = tf.reshape(image, [IMAGE_SIDE, IMAGE_SIDE, IMAGE_CHN])
-    # print(weight_character)
-    # print(weight_affinity)
     weight_character = tf.reshape(weight_character, [IMAGE_SIDE, IMAGE_SIDE, 1])
     weight_affinity = tf.reshape(weight_affinity, [IMAGE_SIDE, IMAGE_SIDE, 1])
-    # image = tf.cast(image, tf.float32)
-    # image.set_shape([IMAGE_SIDE, IMAGE_SIDE, IMAGE_CHN])
-    # print('!@#$', image)
-    # weight_character = tf.cast(weight_character, tf.float32)
-    # weight_affinity = tf.cast(weight_affinity, tf.float32)
-    # weight_character.set_shape([IMAGE_SIDE, IMAGE_SIDE, 1])
-    # weight_affinity.set_shape([IMAGE_SIDE, IMAGE_SIDE, 1])
-    # print(weight_affinity)
-    # tf.print(weight_affinity.get_shape(), output_stream=sys.stdout)
-    # tf.print(tf.math.reduce_max(weight_affinity), output_stream=sys.stdout)
-    # tf.print(tf.math.reduce_min(weight_affinity), output_stream=sys.stdout)
+    # label = {'weight_characters': weight_character, 'weight_affinitys': weight_affinity, 'char_coords': char_coords}
+    label = {'weight_characters': weight_character, 'weight_affinitys': weight_affinity}
+
     #return image and label used in learner to calculate loss
     # return image [None, 768, 768, 3], label [None, 768, 768, 2] + confident_map
-    label = {'weight_characters': weight_character, 'weight_affinitys': weight_affinity}
-    # tf.print(word_texts)
     return image, label
-
 
 class SynthTextDataset(AbstractDataset):
     def __init__(self, is_train):
