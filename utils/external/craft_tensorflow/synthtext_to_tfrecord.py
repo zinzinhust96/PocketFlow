@@ -68,11 +68,10 @@ def convert_to_example(
     x_bottom_left = []
     y_bottom_left = []
     word_texts = [word.encode('utf8') for word in word_texts]
-    # print(char_bbs.reshape(-1, 4, 2)[:10])
     char_bbs = char_bbs.reshape(-1, 8)
     for ind in range(char_bbs.shape[0]):
-        obj = char_bbs[ind].flatten()
-        obj = [int(number) for number in obj]
+        obj = char_bbs[ind]
+        obj = [int(number) for number in obj]       # TODO: test later (int or float)
         [l.append(point) for l, point in zip([x_top_left, y_top_left,
                                               x_top_right, y_top_right,
                                               x_bottom_right, y_bottom_right,
@@ -139,16 +138,16 @@ if __name__ == "__main__":
         print('{}/{}: Processing {}'.format(i, len(imnames), filename), end='\r')
         img_path = os.path.join(SYNTH_IMG_PATH, 'img', filename)
         # Read RGB
-        image = cv2.imread(img_path)[:,:,::-1]
+        image = cv2.imread(img_path)[:,:,::-1]     # change from BGR to RGB image
         height, width, channels = image.shape
-        # Encode image into buffers
+        
         # character bounding box
         char_bbs = charBBs[i] #shape: (2, 4, ?)
+
         # character text
         txt = txts[i]
         word_texts = txt.copy()
-        # word_texts example: ['clusiaceae', '3HC', 'achimenes', '228X6', 'OBZG0', 'ANTIDOTES', 'MUTEST', 'カルラ']
-        word_texts = [word_text.strip() for word_text in word_texts]
+        word_texts = [word_text.strip() for word_text in word_texts]    # ['clusiaceae', '3HC', 'achimenes', 'カルラ']
 
         # Get weight_character and weight_affinity
         image, character = resize(image, char_bbs.copy())
@@ -159,7 +158,7 @@ if __name__ == "__main__":
             imgs = rand_augment(list([image.copy(), weight_character.copy(), weight_affinity.copy()]))
         else:
             imgs = [image.copy(), weight_character.copy(), weight_affinity.copy()]
-        imgs[0] = normalize_mean_variance(imgs[0][:,:,::-1])
+        imgs[0] = normalize_mean_variance(imgs[0])
         # print(np.unique(imgs[0]))
         # print(np.unique(imgs[1]))
         # print(np.max(imgs[2]))
