@@ -1,7 +1,7 @@
 from shapely.geometry import Polygon
 import numpy as np
 import cv2
-import config
+import utils.external.craft_tensorflow.config as config
 
 # Done so that the edge has a value of ~ 0.4
 center = config.window//2

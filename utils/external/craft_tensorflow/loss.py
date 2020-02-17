@@ -9,14 +9,14 @@ import utils.external.craft_tensorflow.config as CONFIG
 FLAGS = tf.app.flags.FLAGS
 
 
-def MSE_OHEM_Loss(output_imgs, target_imgs, confident_maps, is_train):
+def MSE_OHEM_Loss(output_imgs, target_imgs, confident_maps):
     loss_every_sample = []
 
-    if is_train:
+    if tf.shape(output_imgs)[0] == tf.constant(FLAGS.batch_size, dtype=tf.int32):
         batch_size = FLAGS.batch_size
-    else: 
+    else:
         batch_size = FLAGS.batch_size_eval
-        
+
     for i in range(batch_size):
         output_img = tf.reshape(output_imgs[i], [-1])
         target_img = tf.reshape(target_imgs[i], [-1])

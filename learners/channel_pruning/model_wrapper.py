@@ -76,6 +76,7 @@ class Model:  # pylint: disable=too-many-instance-attributes
     with self.g.as_default():
       operations = []
       for i in self.g.get_operations():
+        # if i.type in otypes and 'arous_conv' not in i.name:
         if i.type in otypes:
           operations.append(i)
     return operations
