@@ -91,7 +91,7 @@ class AbstractDataset(ABC):
       iterator_trn = self.__make_iterator(dataset.skip(FLAGS.nb_smpls_val))
       return iterator_trn, iterator_val
 
-    return self.__make_iterator(dataset)
+    return self.__make_iterator(dataset), None
 
   def __make_iterator(self, dataset):
     """Make an iterator from tf.data.Dataset.

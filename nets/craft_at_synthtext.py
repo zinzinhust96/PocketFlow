@@ -8,7 +8,7 @@ import tensornets as nets
 
 
 FLAGS = tf.app.flags.FLAGS
-tf.app.flags.DEFINE_integer('epoch', 10, ' ')
+tf.app.flags.DEFINE_integer('epoch', 1, ' ')
 tf.app.flags.DEFINE_string('vgg_ckpt', '/hdd/Minhbq/Deep-Compression/pretrained/vgg16.ckpt', 'VGG tensorflow CKPT path')
 tf.app.flags.DEFINE_boolean('is_resume', False, 'Whether to load vgg pretrained model')
 tf.app.flags.DEFINE_float('learning_rate', 0.001, ' ')
@@ -47,15 +47,15 @@ class ModelHelper(AbstractModelHelper):
         self.model_scope = None
         self.trainable_vars = None
 
-    def build_dataset_train(self, enbl_trn_val_split=False):
+    def build_dataset_train(self, enbl_trn_val_split=False, sess=None):
         """Build the data subset for training, usually with data augmentation."""
 
-        return self.dataset_train.build(enbl_trn_val_split)
+        return self.dataset_train.build(enbl_trn_val_split, sess=sess)
 
-    def build_dataset_eval(self):
+    def build_dataset_eval(self, sess=None):
         """Build the data subset for evaluation, usually without data augmentation."""
 
-        return self.dataset_eval.build()
+        return self.dataset_eval.build(sess=sess)
 
     def forward_train(self, inputs):
         """Forward computation at training."""

@@ -117,7 +117,7 @@ class FullPrecLearner(AbstractLearner):  # pylint: disable=too-many-instance-att
 
       # data input pipeline
       with tf.variable_scope(self.data_scope):
-        iterator = self.build_dataset_train() if is_train else self.build_dataset_eval()
+        iterator, _ = self.build_dataset_train(sess = sess) if is_train else self.build_dataset_eval(sess = sess)
         images, labels = iterator.get_next()
         if not isinstance(images, dict):
           tf.add_to_collection('images_final', images)

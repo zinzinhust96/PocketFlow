@@ -59,27 +59,9 @@ def maxpooling(layer_input, namescope, kernel_size=(2, 2), stride = 2, padding =
                             strides=[1, stride, stride, 1], padding=padding, name=namescope)
 
 def craft(inputs, is_training):
-    # with tf.variable_scope("preprocess"):
-    #     inputs = tf.subtract(inputs,  [103.939, 116.779, 123.68], name='inputs') # Because we are using VVG16 pretrained model
-    # optional
 
     with tf.variable_scope("encode"):
-        # VGG16 = nets.VGG16(inputs, is_training=is_training, stem=True)
-        # VGG16, _ = vgg16(inputs, checkpoint=FLAGS.vgg_ckpt, is_input_trainable=is_training)
-        # vgg16_model = VGG16(inputs)
         f = VGG16(inputs)
-
-    # print('>>>>>> debug')
-    # for n in tf.get_default_graph().get_operations():
-    #     if 'decode' in n.name:
-    #         print(n.values())
-    # print('>>>>>> debug')
-    # f = [
-    #     tf.get_default_graph().get_tensor_by_name("model/encode/VGG16/conv2_2/Relu:0"),
-    #     tf.get_default_graph().get_tensor_by_name("model/encode/VGG16/conv3_3/Relu:0"),
-    #     tf.get_default_graph().get_tensor_by_name("model/encode/VGG16/conv4_3/Relu:0"),
-    #     tf.get_default_graph().get_tensor_by_name("model/encode/VGG16/conv5_3/Relu:0"),
-    # ]  # name end points
 
     net = f[3]
     # VGG end
@@ -120,8 +102,6 @@ def craft(inputs, is_training):
             net = tf.layers.conv2d(net, 16, 3, padding='SAME')
             net = tf.layers.conv2d(net, 16, 1, padding='SAME')
             net = tf.layers.conv2d(net, 2, 1, padding='SAME', name='heatmaps')
-    # return tf.get_default_graph().get_tensor_by_name('model/decode/output/heatmaps/BiasAdd:0')
-    
     return net
 
 def VGG16(inputs):
@@ -147,66 +127,5 @@ def VGG16(inputs):
         conv5_1 = conv2d(pool4, 512, 'conv5_1')
         conv5_2 = conv2d(conv5_1, 512, 'conv5_2')
         conv5_3 = conv2d(conv5_2, 512, 'conv5_3')
-    
-    # with tf.variable_scope("stage6"):
-    #     net = maxpooling(conv5_3, 'pool5', (3,3), 1)
-    #     net = conv2d(net, 1024, 'conv6')
-    #     net = conv2d(net, 1024, 'conv7', kernel_size=(1,1))
 
     return conv2_2, conv3_3, conv4_3, conv5_3
-
-
-
-# class VGG16(object):
-#     def __init__(self, inputs, n_classes=1000):
-#         self.n_classes = n_classes
-#         self.inputs = inputs        
-#         with tf.variable_scope('VGG16'):
-#             self.build()
-#         # self.output = tf.nn.softmax(self.fc3)
-
-#     def build(self):
-#         self.conv1_1 = self.conv2d(self.inputs, 64, 'conv1_1')
-#         self.conv1_2 = self.conv2d(self.conv1_1, 64, 'conv1_2')
-#         self.pool1 = self.maxpooling(self.conv1_2, 'pool1')
-#         self.conv2_1 = self.conv2d(self.pool1, 128, 'conv2_1')
-#         self.conv2_2 = self.conv2d(self.conv2_1, 128, 'conv2_2')
-#         self.pool2 = self.maxpooling(self.conv2_2, 'pool2')
-
-#         self.conv3_1 = self.conv2d(self.pool2, 256, 'conv3_1')
-#         self.conv3_2 = self.conv2d(self.conv3_1, 256, 'conv3_2')
-#         self.conv3_3 = self.conv2d(self.conv3_2, 256, 'conv3_3')
-#         self.pool3 = self.maxpooling(self.conv3_3, 'pool3')
-
-#         self.conv4_1 = self.conv2d(self.pool3, 512, 'conv4_1')
-#         self.conv4_2 = self.conv2d(self.conv4_1, 512, 'conv4_2')
-#         self.conv4_3 = self.conv2d(self.conv4_2, 512, 'conv4_3')
-#         self.pool4 = self.maxpooling(self.conv4_3, 'pool4')
-
-#         self.conv5_1 = self.conv2d(self.pool4, 512, 'conv5_1')
-#         self.conv5_2 = self.conv2d(self.conv5_1, 512, 'conv5_2')
-#         self.conv5_3 = self.conv2d(self.conv5_2, 512, 'conv5_3')
-#         # self.pool5 = self.maxpooling(self.conv5_3, 'pool5')     
-
-#         # shape = int(np.prod(self.pool5.get_shape()[1:]))
-#         # self.flat = tf.reshape(self.pool5, [-1, shape])
-#         # self.fc1 = self.fc(self.flat, shape, 4096, 'fc1')
-#         # self.fc2 = self.fc(self.fc1, 4096, 4096, 'fc2')
-#         # self.fc3 = self.fc(self.fc2, 4096, self.n_classes, 'fc3', relu=False)
-
-
-#     def conv2d(self, inputs, n_kernels, namescope, kernel_size=(3, 3), stride = 1, padding = 'SAME'):
-#         with tf.variable_scope(namescope, reuse=tf.AUTO_REUSE):
-#             w = tf.get_variable('weights', shape=[kernel_size[0], kernel_size[1], inputs.shape[-1], n_kernels],
-#                             initializer=tf.initializers.truncated_normal(stddev=1e-1), dtype=tf.float32)
-#             biases = tf.get_variable('biases', shape=[n_kernels], initializer=tf.constant_initializer(), 
-#                                      dtype=tf.float32)
-            
-#             conv = tf.nn.conv2d(input=inputs, filter=w, strides=[1, stride, stride, 1], padding = padding)
-#             out = tf.nn.bias_add(conv, biases)   
-#             return tf.nn.relu(out)
-
-#     def maxpooling(self, layer_input, namescope, kernel_size=(2, 2), stride = 2, padding = 'SAME'):
-#         return tf.nn.max_pool(layer_input, ksize=[1, kernel_size[0], kernel_size[1], 1],
-#                             strides=[1, stride, stride, 1], padding=padding, name=namescope)
-

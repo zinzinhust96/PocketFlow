@@ -50,15 +50,15 @@ tf.app.flags.DEFINE_string(
   'the prune list file which contains the compression ratio of each convolution layers')
 tf.app.flags.DEFINE_string(
   'cp_channel_pruned_path',
-  './models/pruned_model.ckpt',
+  './models_cp/pruned_model.ckpt',
   'channel pruned model\'s save path')
 tf.app.flags.DEFINE_string(
   'cp_best_path',
-  './models/best_model.ckpt',
+  './models_cp/best_model.ckpt',
   'channel pruned model\'s temporary save path')
 tf.app.flags.DEFINE_string(
   'cp_original_path',
-  './models/original_model.ckpt',
+  './models_cp/original_model.ckpt',
   'channel pruned model\'s temporary save path')
 tf.app.flags.DEFINE_float(
   'cp_preserve_ratio',
@@ -153,6 +153,9 @@ class ChannelPrunedLearner(AbstractLearner):  # pylint: disable=too-many-instanc
       self.sm_writer.add_graph(sess.graph)
       train_images = tf.get_collection('train_images')[0]
       train_labels = tf.get_collection('train_labels')[0]
+
+      self.reload_iterator_initialization(mode = "train")
+
       mem_images = tf.get_collection('mem_images')[0]
       mem_labels = tf.get_collection('mem_labels')[0]
       summary_op = tf.get_collection('summary_op')[0]
@@ -227,8 +230,14 @@ class ChannelPrunedLearner(AbstractLearner):  # pylint: disable=too-many-instanc
 
       # data input pipeline
       with tf.variable_scope(self.data_scope):
-        train_images, train_labels = self.build_dataset_train().get_next()
-        eval_images, eval_labels = self.build_dataset_eval().get_next()
+        train_iterator, train_data = self.build_dataset_train(sess = sess)
+        train_images, train_labels = train_iterator.get_next()
+        eval_iterator, eval_data = self.build_dataset_eval(sess = sess)
+        eval_images, eval_labels = eval_iterator.get_next()
+        
+        self.train_data = train_data
+        self.eval_data = eval_data
+
         image_shape = train_images.shape.as_list()
         label_shape = train_labels.shape.as_list()
         image_shape[0] = FLAGS.batch_size
@@ -305,6 +314,9 @@ class ChannelPrunedLearner(AbstractLearner):  # pylint: disable=too-many-instanc
 
       self.sess_eval = tf.Session(config=config)
       self.saver_eval.restore(self.sess_eval, path)
+
+      self.reload_iterator_initialization(mode = "eval")
+
       trainable_vars = self.trainable_vars
       loss, accuracy = self.calc_loss(eval_labels, eval_logits, trainable_vars)
       self.eval_op = [loss] + list(accuracy.values())
@@ -335,6 +347,8 @@ class ChannelPrunedLearner(AbstractLearner):  # pylint: disable=too-many-instanc
 
       self.sess_train = tf.Session(config=config)
       self.saver_train.restore(self.sess_train, path)
+
+      self.reload_iterator_initialization(mode = "train")
 
       trainable_vars = self.trainable_vars
       loss, accuracy = self.calc_loss(train_labels, logits, trainable_vars)
@@ -699,3 +713,22 @@ class ChannelPrunedLearner(AbstractLearner):  # pylint: disable=too-many-instanc
   def __is_primary_worker(cls):
     """Weather it is the primary worker"""
     return not FLAGS.enbl_multi_gpu or mgw.rank() == 0
+
+
+  def reload_iterator_initialization(self, mode="train"):
+    data = self.train_data if mode == 'train' else self.eval_data
+    if data is None:
+      return
+    # Initialize iterator (only for data from dataset from_tensor_slices)
+    # train: data/MakeIterator, data/Placeholder:0, data/Placeholder_1:0
+    # val: data/MakeIterator_1, data/Placeholder_2:0, data/Placeholder_3:0
+    # mode: train or eval
+    init_ite_operation_name = 'data/MakeIterator' if mode == 'train' else 'data/MakeIterator_1'
+    image_tensor_name = 'data/Placeholder:0' if mode == 'train' else 'data/Placeholder_2:0'
+    label_tensor_name = 'data/Placeholder_1:0' if mode == 'train' else 'data/Placeholder_3:0'
+    sess = self.sess_train if mode == 'train' else self.sess_eval
+    init_ite = tf.get_default_graph().get_operation_by_name(init_ite_operation_name)
+    img_ph = tf.get_default_graph().get_tensor_by_name(image_tensor_name)
+    label_ph = tf.get_default_graph().get_tensor_by_name(label_tensor_name)
+    images,labels = data
+    sess.run(init_ite, feed_dict={ img_ph: images, label_ph: labels }) 

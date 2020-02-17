@@ -208,7 +208,7 @@ class ChannelPrunedGpuLearner(AbstractLearner):  # pylint: disable=too-many-inst
 
       # data input pipeline
       with tf.variable_scope(self.data_scope):
-        iterator = self.build_dataset_train()
+        iterator, _ = self.build_dataset_train(sess = sess)
         images, labels = iterator.get_next()
 
       # model definition - distilled model
@@ -304,7 +304,7 @@ class ChannelPrunedGpuLearner(AbstractLearner):  # pylint: disable=too-many-inst
 
       # data input pipeline
       with tf.variable_scope(self.data_scope):
-        iterator = self.build_dataset_eval()
+        iterator, _ = self.build_dataset_eval(sess=self.sess_eval)
         images, labels = iterator.get_next()
 
       # model definition - distilled model
