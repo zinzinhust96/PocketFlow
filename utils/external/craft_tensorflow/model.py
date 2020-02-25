@@ -39,11 +39,11 @@ def arous_conv(x, filter_height, filter_width, num_filters, rate, name):
         weights = tf.get_variable(
             'weights', shape=[filter_height, filter_width, input_channels, num_filters])
         biases = tf.get_variable('biases', shape=[num_filters])
-        arousconv = tf.nn.conv2d(x, weights, strides=[1, 1, 1, 1], padding='SAME')
+        arousconv = tf.nn.atrous_conv2d(x, weights, rate=rate, padding='SAME')
         bias = tf.nn.bias_add(arousconv, biases)
         return bias
 
-def conv2d(inputs, n_kernels, namescope, kernel_size=(3, 3), stride = 1, padding = 'SAME'):
+def conv2d(inputs, n_kernels, namescope = 'conv', kernel_size=(3, 3), stride = 1, padding = 'SAME'):
         with tf.variable_scope(namescope, reuse=tf.AUTO_REUSE):
             w = tf.get_variable('weights', shape=[kernel_size[0], kernel_size[1], inputs.shape[-1], n_kernels],
                             initializer=tf.initializers.truncated_normal(stddev=1e-1), dtype=tf.float32)
@@ -68,10 +68,11 @@ def craft(inputs, is_training):
     with tf.variable_scope("stage6"):
         net = tf.layers.max_pooling2d(
             inputs=net, pool_size=3, strides=1, padding='SAME', name='pool5')
-        net = arous_conv(net, 3, 3, 1024, 6, name='conv6')
-        # net = conv2d(net, 1024, 'conv6')
-        net = tf.layers.conv2d(inputs=net, filters=1024,
-                               kernel_size=1, padding='SAME', name='conv7')
+        # net = arous_conv(net, 3, 3, 1024, 6, name='arous_conv')
+        net = conv2d(net, 1024, 'arous_conv')
+        net = conv2d(net, 1024, namescope='conv6', kernel_size= (1, 1))
+        # net = tf.layers.conv2d(inputs=net, filters=1024,
+        #                        kernel_size=1, padding='SAME', name='conv6')
 
     # U-net
     with tf.variable_scope("decode"):
@@ -104,28 +105,48 @@ def craft(inputs, is_training):
             net = tf.layers.conv2d(net, 2, 1, padding='SAME', name='heatmaps')
     return net
 
+
 def VGG16(inputs):
     # with tf.variable_scope("encode"):
-    with tf.variable_scope('VGG16'):
-        conv1_1 = conv2d(inputs, 64, 'conv1_1')
-        conv1_2 = conv2d(conv1_1, 64, 'conv1_2')
+    with tf.variable_scope('vgg16'):
+        with tf.variable_scope('conv1'):
+            with tf.variable_scope('1'):
+                conv1_1 = conv2d(inputs, 64)
+            with tf.variable_scope('2'):
+                conv1_2 = conv2d(conv1_1, 64)
         pool1 = maxpooling(conv1_2, 'pool1')
-        conv2_1 = conv2d(pool1, 128, 'conv2_1')
-        conv2_2 = conv2d(conv2_1, 128, 'conv2_2')
+
+        with tf.variable_scope('conv2'):
+            with tf.variable_scope('1'):
+                conv2_1 = conv2d(pool1, 128)
+            with tf.variable_scope('2'):
+                conv2_2 = conv2d(conv2_1, 128)
         pool2 = maxpooling(conv2_2, 'pool2')
 
-        conv3_1 = conv2d(pool2, 256, 'conv3_1')
-        conv3_2 = conv2d(conv3_1, 256, 'conv3_2')
-        conv3_3 = conv2d(conv3_2, 256, 'conv3_3')
+        with tf.variable_scope('conv3'):
+            with tf.variable_scope('1'):
+                conv3_1 = conv2d(pool2, 256)
+            with tf.variable_scope('2'):
+                conv3_2 = conv2d(conv3_1, 256)
+            with tf.variable_scope('3'):
+                conv3_3 = conv2d(conv3_2, 256)
         pool3 = maxpooling(conv3_3, 'pool3')
 
-        conv4_1 = conv2d(pool3, 512, 'conv4_1')
-        conv4_2 = conv2d(conv4_1, 512, 'conv4_2')
-        conv4_3 = conv2d(conv4_2, 512, 'conv4_3')
+        with tf.variable_scope('conv4'):
+            with tf.variable_scope('1'):
+                conv4_1 = conv2d(pool3, 512)
+            with tf.variable_scope('2'):
+                conv4_2 = conv2d(conv4_1, 512)
+            with tf.variable_scope('3'):
+                conv4_3 = conv2d(conv4_2, 512)
         pool4 = maxpooling(conv4_3, 'pool4')
 
-        conv5_1 = conv2d(pool4, 512, 'conv5_1')
-        conv5_2 = conv2d(conv5_1, 512, 'conv5_2')
-        conv5_3 = conv2d(conv5_2, 512, 'conv5_3')
+        with tf.variable_scope('conv5'):
+            with tf.variable_scope('1'):
+                conv5_1 = conv2d(pool4, 512,)
+            with tf.variable_scope('2'):
+                conv5_2 = conv2d(conv5_1, 512)
+            with tf.variable_scope('3'):
+                conv5_3 = conv2d(conv5_2, 512)
 
     return conv2_2, conv3_3, conv4_3, conv5_3
